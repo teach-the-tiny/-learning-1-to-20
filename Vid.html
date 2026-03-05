@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Click Every Number Game</title>
+
+<style>
+body{
+    margin:0;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(to bottom,#a1c4fd,#c2e9fb);
+    font-family:'Comic Sans MS', cursive;
+    position:relative;
+}
+
+/* LEVEL TEXT */
+#levelText{
+    font-size:45px;
+    font-weight:bold;
+    margin-bottom:20px;
+    display:none;
+}
+
+/* START BUTTON */
+#startBtn{
+    padding:15px 40px;
+    font-size:30px;
+    border-radius:20px;
+    border:none;
+    cursor:pointer;
+    background:#00cc44;
+    color:white;
+    box-shadow:0 6px #009933;
+}
+
+#startBtn:active{
+    transform:translateY(4px);
+    box-shadow:0 2px #009933;
+}
+
+/* REPEAT BUTTON */
+#repeatBtn{
+    font-size:200px;
+    cursor:pointer;
+    margin-bottom:20px;
+    color:#00cc44;
+    display:none;
+}
+
+/* OPTIONS */
+#options{
+    display:flex;
+    gap:40px;
+    flex-wrap:nowrap;
+    justify-content:center;
+    max-width:100%;
+}
+
+/* NUMBER BUTTONS */
+.numBtn{
+    width:110px;
+    height:130px;
+    border-radius:50%;
+    border:none;
+    font-size:80px;
+    font-weight:bold;
+    background:#ffcc00;
+    box-shadow:0 8px #e6b800;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.numBtn:active{
+    transform:translateY(5px);
+    box-shadow:0 3px #e6b800;
+}
+
+.correct{
+    background:#66ff66 !important;
+}
+
+.wrong{
+    background:#ff6666 !important;
+}
+
+/* TICK */
+#tick{
+    position:absolute;
+    bottom:80px;
+    right:300px;
+    font-size:300px;
+    font-weight:150;
+    color:#00cc44;
+    display:none;
+}
+
+
+/* PANDA */
+#pandaVideo{
+    width:200px;
+    cursor:pointer;
+}
+
+video::-webkit-media-controls-picture-in-picture-button{
+display:none !important;
+}
+
+/* TROPHY ANIMATION */
+@keyframes trophyPop{
+0%{transform:scale(0);}
+60%{transform:scale(1.3);}
+100%{transform:scale(1);}
+}
+
+#trophy{
+animation:trophyPop 1s ease;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="levelText"></div>
+
+<button id="startBtn">START</button>
+
+<div id="repeatBtn">
+<video id="pandaVideo" width="200"
+controlslist="nodownload noremoteplayback"
+disablepictureinpicture
+playsinline>
+<source src="Panda12.mp4" type="video/mp4">
+</video>
+</div>
+
+<div id="options"></div>
+
+<div id="tick">✔</div>
+
+
+<div id="resultBox" style="display:none;text-align:center;margin-top:20px;">
+<div id="trophy" style="font-size:120px;"></div>
+<div id="resultText" style="font-size:35px;font-weight:bold;"></div>
+</div>
+
+<audio id="correctSound">
+<source src="https://actions.google.com/sounds/v1/cartoon/clang.ogg">
+</audio>
+
+<script>
+
+let level = 1;
+let maxNumber = 3;
+let correctAnswer = 0;
+let totalCorrectNeeded = 0;
+let correctClicked = 0;
+let levelScore = 0;
+let optionCount = 3;
+let questionsNeeded = 10;
+let levelStartTime = 0;
+
+/* LEVEL SCORE STORAGE */
+let level1Score = 0;
+let level2Score = 0;
+let level3Score = 0;
+
+function speak(text){
+speechSynthesis.cancel();
+let s = new SpeechSynthesisUtterance(text);
+s.lang="en-US";
+s.rate=0.8;
+s.pitch=1.4;
+speechSynthesis.speak(s);
+}
+
+function setLevel(){
+
+let levelBox=document.getElementById("levelText");
+let repeatBtn=document.getElementById("repeatBtn");
+
+document.getElementById("options").innerHTML="";
+document.getElementById("tick").style.display="none";
+
+repeatBtn.style.display="none";
+levelScore=0;
+
+levelBox.innerText="LEVEL - "+level;
+levelBox.style.display="block";
+
+if(level===1){
+maxNumber=3;
+optionCount=3;
+questionsNeeded=10;
+speak("Level 1. Numbers up to 3.");
+}
+
+else if(level===2){
+maxNumber=5;
+optionCount=5;
+questionsNeeded=15;
+speak("Level 2. Numbers up to 5.");
+}
+
+else if(level===3){
+maxNumber=10;
+optionCount=3;
+questionsNeeded=20;
+speak("Level 3. Numbers up to 10.");
+}
+
+setTimeout(function(){
+levelBox.style.display="none";
+repeatBtn.style.display="block";
+generateQuestion();
+},1500);
+
+}
+
+function generateQuestion(){
+
+document.getElementById("tick").style.display="none";
+correctClicked=0;
+totalCorrectNeeded=0;
+
+correctAnswer=Math.floor(Math.random()*maxNumber)+1;
+
+let container=document.getElementById("options");
+container.innerHTML="";
+
+let numbers=[];
+numbers.push(correctAnswer);
+
+while(numbers.length<optionCount){
+numbers.push(Math.floor(Math.random()*maxNumber)+1);
+}
+
+numbers.sort(()=>Math.random()-0.5);
+
+numbers.forEach(num=>{
+
+if(num===correctAnswer){
+totalCorrectNeeded++;
+}
+
+let btn=document.createElement("button");
+btn.innerText=num;
+btn.className="numBtn";
+
+btn.onclick=function(){
+checkAnswer(btn,num);
+};
+
+container.appendChild(btn);
+
+});
+
+speak("Click on every "+correctAnswer);
+
+}
+
+function checkAnswer(btn,value){
+
+if(value===correctAnswer){
+
+btn.classList.add("correct");
+btn.disabled=true;
+correctClicked++;
+
+if(correctClicked===totalCorrectNeeded){
+
+document.getElementById("tick").style.display="block";
+document.getElementById("correctSound").play();
+speak("Great job");
+
+levelScore++;
+
+if(levelScore>=questionsNeeded){
+
+/* SAVE LEVEL SCORE */
+
+if(level===1) level1Score=levelScore;
+if(level===2) level2Score=levelScore;
+if(level===3) level3Score=levelScore;
+
+
+if(level===3 && optionCount===3){
+optionCount=5;
+levelScore=0;
+setTimeout(generateQuestion,1500);
+return;
+}
+
+level++;
+
+if(level<=3){
+setTimeout(setLevel,2000);
+}
+
+else{
+
+let timeTaken=(Date.now()-levelStartTime)/1000;
+
+let trophy="";
+let message="Good work!";
+
+if(timeTaken<180){
+trophy="🥇";
+}
+
+else if(timeTaken<=300){
+trophy="🥈";
+}
+
+else if(timeTaken<=420){
+trophy="🥉";
+message="Bronze Trophy! Good work!";
+}
+
+else{
+trophy="😊";
+message="Practice more and you will become a star!";
+}
+
+document.getElementById("trophy").innerText = trophy;
+document.getElementById("resultText").innerHTML = message;
+
+/* HIDE GAME ELEMENTS */
+document.getElementById("options").style.display = "none";
+document.getElementById("repeatBtn").style.display = "none";
+document.getElementById("tick").style.display = "none";
+
+/* SHOW RESULT SCREEN */
+document.getElementById("resultBox").style.display = "block";
+
+/* CONFETTI */
+launchConfetti();
+
+
+speak(message);
+
+}
+
+}
+
+else{
+setTimeout(generateQuestion,1000);
+}
+
+}
+
+}
+
+else{
+
+btn.classList.add("wrong");
+speak("Try again");
+
+setTimeout(()=>{
+btn.classList.remove("wrong");
+},600);
+
+}
+
+}
+
+/* START BUTTON */
+
+document.getElementById("startBtn").onclick=function(){
+this.style.display="none";
+document.getElementById("repeatBtn").style.display="block";
+levelStartTime=Date.now();
+setLevel();
+};
+
+/* REPEAT BUTTON */
+
+document.getElementById("repeatBtn").onclick=function(){
+
+let panda=document.getElementById("pandaVideo");
+
+panda.currentTime=0;
+panda.play();
+
+speak("Click on every "+correctAnswer);
+
+};
+function launchConfetti(){
+
+for(let i=0;i<80;i++){
+
+let conf=document.createElement("div");
+
+conf.style.position="fixed";
+conf.style.width="8px";
+conf.style.height="8px";
+conf.style.background="hsl("+Math.random()*360+"deg,80%,60%)";
+conf.style.left=Math.random()*100+"vw";
+conf.style.top="-10px";
+conf.style.opacity="0.9";
+conf.style.zIndex="999";
+
+document.body.appendChild(conf);
+
+let fall=3+Math.random()*3;
+
+conf.animate([
+{transform:"translateY(0px) rotate(0deg)"},
+{transform:"translateY(100vh) rotate(720deg)"}
+],
+{
+duration:fall*1000,
+iterations:1
+});
+
+setTimeout(()=>conf.remove(),fall*1000);
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
