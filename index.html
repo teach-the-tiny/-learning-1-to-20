@@ -2,230 +2,572 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Sorting A–Z Activity WebObject</title>
 <style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden;                              /* no scroll bars */
+    font-family: "Comic Sans MS", "Chalkboard SE", "Trebuchet MS", Arial, sans-serif;
+    color: #2b2b5e; user-select: none; -webkit-user-select: none;
+  }
   body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 20px;
+    height: 100vh; height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    background: linear-gradient(180deg, #8fd8ff 0%, #d6f1ff 55%, #b8ecb0 100%);
+    position: relative; --s: 80px;
   }
+
+  /* ---------- Kid-friendly decorations ---------- */
+  .deco { position: fixed; pointer-events: none; z-index: 0; line-height: 1; }
+  .d1 { top: 2%; left: 3%;  font-size: 56px; animation: float 7s ease-in-out infinite; }
+  .d2 { top: 6%; right: 4%; font-size: 70px; animation: float 9s ease-in-out infinite; }
+  .d3 { bottom: 1%; left: 2%;  font-size: 56px; }
+  .d4 { bottom: 1%; right: 2%; font-size: 56px; }
+  .d5 { top: 40%; left: 1%; font-size: 40px; animation: float 6s ease-in-out infinite; }
+  .d6 { top: 45%; right: 1%; font-size: 40px; animation: float 8s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-12px); } }
+  .topbar, .progress, .letter-row, .drop-row, .message, .btns { position: relative; z-index: 1; }
+  .topbar { z-index: 5; margin-top: 6px; }
+  .main { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 1; }
+  .btns { margin-bottom: 8px; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-bottom: 4px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab {
+    height: 42px; min-width: 62px; padding: 0 12px; font-size: 18px;
+    border: 3px solid #fff; border-radius: 22px; color: #fff; font-weight: bold;
+    box-shadow: 0 3px 0 rgba(0,0,0,.25); opacity: .75; cursor: pointer;
+  }
+  .tab[data-level="0"] { background: #4cc46a; }
+  .tab[data-level="1"] { background: #ff9f2e; }
+  .tab[data-level="2"] { background: #a269ff; }
+  .tab.active { opacity: 1; transform: scale(1.12); border-color: #ffe14d; }
+  .stat {
+    background: #fff; border: 3px solid #ff7eb6; border-radius: 20px;
+    padding: 4px 12px; font-weight: bold; font-size: 17px; white-space: nowrap;
+  }
+  .stat span { color: #e0368a; }
+
+  .progress {
+    width: min(92vw, 560px); height: 14px; background: rgba(255,255,255,.8);
+    border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin: 2px 0 4px;
+  }
+  .progress div { height: 100%; width: 0; background: linear-gradient(90deg, #ffd54a, #ff7eb6); transition: width .4s; }
+
+  /* ---------- Rows & tiles ---------- */
   .letter-row, .drop-row {
-    display: flex;
-    margin: 20px;
+    display: flex; flex-wrap: nowrap; justify-content: center; align-items: center;
+    margin: 6px 0; padding: 4px; border-radius: 18px; width: 98vw;
   }
+  .letter-row { background: rgba(255,255,255,.55); border: 3px dashed #fff; }
+
   .letter, .drop-box {
-    width: 60px;
-    height: 60px;
-    margin: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #333;
-    border-radius: 5px;
-    font-family: "Comic Sans MS", cursive;
-    font-weight: bold;
-    font-size: 28px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    box-sizing: border-box;
+    width: var(--s); height: var(--s); margin: 4px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 3px solid #2b2b5e; border-radius: 16px;
+    font-weight: bold; font-size: calc(var(--s) * 0.55);
   }
-  .drop-box .letter {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    border: none;
-    background: transparent;
-    cursor: grab;
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .letter { cursor: grab; touch-action: none; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.3); box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .letter:active { cursor: grabbing; }
+  .letter.dragging { opacity: .25; }
+  .letter.ghost {
+    position: fixed; z-index: 50; margin: 0; pointer-events: none;
+    opacity: .95; transform: scale(1.15) rotate(-4deg); box-shadow: 0 10px 18px rgba(0,0,0,.35);
   }
-  .letter-row .letter {
-    background: #fff;
+  .drop-box { background: rgba(255,255,255,.8); border-style: dashed; border-color: #7a7aff; transition: background .15s; }
+  .drop-box.over { outline: 5px solid #ffd54a; }
+  .drop-box .letter { width: 100%; height: 100%; margin: 0; border: none; border-radius: 12px; background: transparent !important; box-shadow: none; color: #2b2b5e; text-shadow: none; }
+  .drop-box[data-state="correct"], .drop-box[data-state="incorrect"] { border-style: solid; border-color: #2b2b5e; }
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-6px);} 75% { transform: translateX(6px);} }
+
+  .message { height: 30px; line-height: 30px; font-size: 22px; font-weight: bold; text-align: center; }
+  .btns { display: flex; gap: 10px; margin-top: 2px; }
+  .btns button {
+    font-size: 20px; min-width: 52px; height: 48px; padding: 0 16px; font-family: inherit;
+    border: 3px solid #fff; border-radius: 24px; background: #5aa9ff; color: #fff;
+    cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 rgba(0,0,0,.25);
   }
-  .drop-box {
-    background: #f0f0f0;
+  .btns button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .btns button.voice { background: #ff9f2e; }
+
+  /* ---------- Celebration ---------- */
+  .pop { position: fixed; z-index: 60; pointer-events: none; font-size: 34px; animation: rise 1.4s ease-out forwards; }
+  @keyframes rise { from { transform: translateY(0) scale(.6); opacity: 1; } to { transform: translateY(-220px) scale(1.3); opacity: 0; } }
+
+  .overlay { position: fixed; inset: 0; background: rgba(40,30,90,.55); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .overlay.show { display: flex; }
+  .card { background: #fff; border-radius: 26px; padding: 20px 28px; text-align: center; max-width: 90vw; border: 5px solid #ffd54a; }
+  .card h2 { margin: 0 0 4px; font-size: 28px; color: #e0368a; }
+  .card p { margin: 6px 0 12px; font-size: 20px; }
+  .stars { font-size: 44px; color: #f5b301; letter-spacing: 4px; }
+  .card button {
+    font-family: inherit; font-size: 22px; height: 52px; padding: 0 26px; margin: 3px;
+    border: 3px solid #fff; border-radius: 26px; background: #4cc46a; color: #fff; font-weight: bold;
+    box-shadow: 0 4px 0 rgba(0,0,0,.25); cursor: pointer;
   }
-  .dragging {
-    opacity: 0.5;
+
+  @media (max-height: 520px), (max-width: 520px) {
+    .tab { height: 36px; min-width: 50px; font-size: 15px; }
+    .stat { font-size: 14px; padding: 2px 9px; }
+    .btns button { height: 40px; font-size: 18px; }
+    .message { height: 24px; line-height: 24px; font-size: 18px; }
+    .d1, .d2 { font-size: 36px; } .d3, .d4 { font-size: 34px; } .d5, .d6 { display: none; }
   }
 </style>
 </head>
 <body>
 
-<div class="letter-row" id="letterRow"></div>
-<div class="drop-row" id="dropRow"></div>
+<div class="deco d1">☁️</div><div class="deco d2">🌈</div>
+<div class="deco d3">🌳</div><div class="deco d4">🌻</div>
+<div class="deco d5">🦋</div><div class="deco d6">🐝</div>
+
+<div class="topbar" id="topbar">
+  <div class="tabs" id="tabs"></div>
+  <div class="stat">🔤 <span id="qTxt">1/15</span></div>
+  <div class="stat">⭐ <span id="scoreTxt">0</span></div>
+  <div class="stat">⏱ <span id="timeTxt">0:00</span></div>
+</div>
+<div class="progress" id="progressWrap"><div id="progressBar"></div></div>
+
+<div class="main">
+  <div class="letter-row" id="letterRow"></div>
+  <div class="drop-row" id="dropRow"></div>
+  <div class="message" id="message"></div>
+</div>
+<div class="btns" id="btns">
+  <button class="voice" id="voiceBtn" title="Instruction">🔊 Help</button>
+  <button id="soundBtn" title="Sound on/off">🔔</button>
+  <button id="restartBtn" title="Restart this level">↻</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <h2 id="ovTitle"></h2>
+    <div class="stars" id="ovStars"></div>
+    <p id="ovText"></p>
+    <button id="ovBtn"></button>
+  </div>
+</div>
 
 <script>
-const COLOR_CORRECT = "#7bb77b";
-const COLOR_INCORRECT = "#e07070";
-const COLOR_DEFAULT = "#f0f0f0";
+/* ---------- Settings (change these easily) ---------- */
+const LEVELS = [4, 6, 8];                 // boxes in level 1, 2, 3
+const QUESTIONS_PER_LEVEL = 15;           // set 20 for 20 questions
+const POINTS_CORRECT = 10;                // per correct letter (first time)
+const PENALTY_WRONG = 2;                  // per mistake
+const TIME_BONUS_MAX = 10;                // speed bonus per question
+const TIME_BONUS_LIMIT = [15, 25, 35];    // seconds for each level
+const INSTRUCTION = "Please sort the letters in A, B, C, D order. Drag each letter and drop it in the box.";
+const COLOR_CORRECT = "#7be07b";
+const COLOR_INCORRECT = "#ff8a8a";
+const COLOR_DEFAULT = "rgba(255,255,255,0.8)";
+const TILE_COLORS = ["#ff6b6b", "#ff9f2e", "#f2c200", "#4cc46a", "#2eb8d6", "#5a8dff", "#a269ff", "#ff6bb5"];
 
-function getStorylinePlayer() {
-  try { return parent.GetPlayer(); } catch(e){ return null; }
-}
+/* ---------- Storyline bridge ---------- */
+function getStorylinePlayer() { try { return parent.GetPlayer(); } catch (e) { return null; } }
 const player = getStorylinePlayer();
+function setVar(n, v) { try { player?.SetVar(n, v); } catch (e) {} }
 
-const letterRow = document.getElementById("letterRow");
-const dropRow = document.getElementById("dropRow");
+/* ---------- Elements ---------- */
+const $ = id => document.getElementById(id);
+const letterRow = $("letterRow"), dropRow = $("dropRow"), messageEl = $("message");
+const qTxt = $("qTxt"), scoreTxt = $("scoreTxt"), timeTxt = $("timeTxt"), progressBar = $("progressBar");
+const overlay = $("overlay"), ovTitle = $("ovTitle"), ovStars = $("ovStars"), ovText = $("ovText"), ovBtn = $("ovBtn");
+const soundBtn = $("soundBtn"), tabsEl = $("tabs");
 
-let selectedLetters = [];
-let correctIndices = [];
-let correctFlags = [];
+/* ---------- State ---------- */
+let level = 0;
+let prog = [];                 // per-level progress: {q, score, time, done}
+let sessStart = 0, qStart = 0, timerId = null, nextTimer = null;
+let locked = false;
+let selectedLetters = [], correctFlags = [], rewarded = {};
+let soundOn = true;
 
-function allowDrop(e) { e.preventDefault(); }
+function newProg() { return { q: 0, score: 0, time: 0, done: false }; }
+function resetAll() { prog = LEVELS.map(newProg); }
 
+/* ---------- Sound / voice ---------- */
+let audioCtx = null;
+function beep(freq, dur, type) {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type || "sine"; o.frequency.value = freq; g.gain.value = 0.08;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+function speak(text, rate, onstart) {
+  if (!soundOn || !("speechSynthesis" in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US"; u.rate = rate || 0.85; u.pitch = 1.15;
+    if (onstart) u.onstart = onstart;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function speakLetter(l) { speak(l === "A" ? "Ay" : l, 0.8); }
+let introDone = false;
+function speakInstruction(force) {
+  const w = soundOn; if (force) soundOn = true;
+  speak(INSTRUCTION, 0.9, () => { introDone = true; });
+  soundOn = w;
+}
+$("voiceBtn").onclick = () => speakInstruction(true);
+/* Browsers block voice until the first touch/click: speak the instruction on the first tap */
+document.addEventListener("pointerdown", e => {
+  if (!introDone && !(e.target.closest && e.target.closest(".letter, .tab, #btns, .overlay"))) speakInstruction();
+}, true);
+soundBtn.onclick = () => {
+  soundOn = !soundOn;
+  soundBtn.textContent = soundOn ? "🔔" : "🔕";
+  if (!soundOn && "speechSynthesis" in window) speechSynthesis.cancel();
+};
+
+/* ---------- HUD ---------- */
+function fmt(s) { s = Math.floor(s); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+function say(msg, color) { messageEl.textContent = msg; messageEl.style.color = color || "#2b2b5e"; }
+function totalScore() { return prog.reduce((a, p) => a + p.score, 0); }
+function levelTime() { return prog[level].time + (Date.now() - sessStart) / 1000; }
+function updateHud() {
+  const p = prog[level];
+  qTxt.textContent = Math.min(p.q + 1, QUESTIONS_PER_LEVEL) + "/" + QUESTIONS_PER_LEVEL;
+  scoreTxt.textContent = totalScore();
+  progressBar.style.width = (p.q / QUESTIONS_PER_LEVEL * 100) + "%";
+  setVar("Level", level + 1); setVar("Question", Math.min(p.q + 1, QUESTIONS_PER_LEVEL));
+  setVar("Score", totalScore());
+  renderTabs();
+}
+function renderTabs() {
+  if (tabsEl.children.length !== LEVELS.length) {
+    tabsEl.innerHTML = "";
+    LEVELS.forEach((n, i) => {
+      const b = document.createElement("button");
+      b.dataset.level = i;
+      b.title = "Level " + (i + 1);
+      b.onclick = () => switchLevel(i);
+      tabsEl.appendChild(b);
+    });
+  }
+  Array.from(tabsEl.children).forEach((b, i) => {
+    b.className = "tab" + (i === level ? " active" : "");
+    b.textContent = "⭐".repeat(i + 1) + (prog[i].done ? "✅" : "");
+  });
+}
+function startTimer() {
+  clearInterval(timerId);
+  sessStart = Date.now();
+  timerId = setInterval(() => {
+    const t = levelTime();
+    timeTxt.textContent = fmt(t);
+    setVar("TimeTaken", Math.floor(t));
+  }, 250);
+}
+function stopTimer() {            // save time of this session
+  clearInterval(timerId);
+  prog[level].time += (Date.now() - sessStart) / 1000;
+  sessStart = Date.now();
+}
+
+/* ---------- Responsive fit (no scroll, any screen) ---------- */
+function fit() {
+  const W = window.innerWidth, H = window.innerHeight, n = LEVELS[level];
+  const fixed = $("topbar").offsetHeight + $("progressWrap").offsetHeight +
+                messageEl.offsetHeight + $("btns").offsetHeight + 40;
+  const sw = (W * 0.96 - 14) / n - 8;          // all boxes in ONE row
+  const sh = (H - fixed) / 2 - 26;             // two rows: questions + answers
+  const sz = Math.max(26, Math.floor(Math.min(sw, sh, 150)));
+  document.body.style.setProperty("--s", sz + "px");
+  [letterRow, dropRow].forEach(r => { r.style.maxWidth = ""; r.style.minHeight = (sz + 16) + "px"; });
+}
+window.addEventListener("resize", fit);
+window.addEventListener("orientationchange", () => setTimeout(fit, 200));
+
+/* ---------- Builders ---------- */
 function createBox(index) {
   const box = document.createElement("div");
   box.className = "drop-box";
   box.dataset.drop = index;
-  box.addEventListener("dragover", allowDrop);
-  box.addEventListener("drop", handleDrop);
   box.style.backgroundColor = COLOR_DEFAULT;
   return box;
 }
-
+function setBoxState(box, state) {
+  box.style.backgroundColor =
+    state === "correct" ? COLOR_CORRECT : state === "incorrect" ? COLOR_INCORRECT : COLOR_DEFAULT;
+  box.dataset.state = state;
+}
 function createLetterElement(letter, idx) {
   const div = document.createElement("div");
   div.className = "letter";
   div.textContent = letter;
   div.dataset.letter = letter;
   div.dataset.idx = idx;
-  div.draggable = true;
-  div.addEventListener("dragstart", handleDragStart);
-  div.addEventListener("dragend", handleDragEnd);
+  div.style.background = TILE_COLORS[(idx - 1) % TILE_COLORS.length];
+  div.addEventListener("pointerdown", e => startDrag(e, div));
   return div;
 }
 
-function handleDragStart(e) {
-  const el = e.target;
-  if (!el || !el.dataset) return;
-  e.dataTransfer.setData("text/plain", el.dataset.letter);
-  el.classList.add("dragging");
-}
-
-function handleDragEnd(e) {
-  if (e.target && e.target.classList)
-    e.target.classList.remove("dragging");
-}
-
-function setBoxState(box, state) {
-  if (state === "correct") {
-    box.style.backgroundColor = COLOR_CORRECT;
-  } else if (state === "incorrect") {
-    box.style.backgroundColor = COLOR_INCORRECT;
-  } else {
-    box.style.backgroundColor = COLOR_DEFAULT;
-  }
-  box.dataset.state = state;
-}
-
-function updateAllCorrect() {
-  const allFilled = Array.from(document.querySelectorAll(".drop-box"))
-    .every(b => b.querySelector(".letter"));
-  const allCorrect = correctFlags.every(f => f);
-  const isAllCorrect = allFilled && allCorrect;
-  player?.SetVar("AllCorrect", isAllCorrect);
-  console.log("All boxes filled:", allFilled, "All correct:", allCorrect, "Final AllCorrect:", isAllCorrect);
-}
-
-function handleDrop(e) {
+/* ---------- Drag & drop (mouse + touch + pen) ---------- */
+let drag = null;
+function startDrag(e, el) {
+  if (locked || drag) return;
   e.preventDefault();
-  const dropTarget = e.currentTarget;
-  const draggedLetter = e.dataTransfer.getData("text/plain");
-  if (!draggedLetter) return;
+  const r = el.getBoundingClientRect();
+  const ghost = el.cloneNode(true);
+  ghost.classList.add("ghost");
+  ghost.style.width = r.width + "px";
+  ghost.style.height = r.height + "px";
+  ghost.style.background = el.style.background || TILE_COLORS[0];
+  ghost.style.color = "#fff";
+  ghost.style.border = "3px solid #2b2b5e";
+  ghost.style.borderRadius = "16px";
+  document.body.appendChild(ghost);
+  el.classList.add("dragging");
+  drag = { el, ghost, w: r.width, h: r.height, id: e.pointerId, over: null };
+  moveGhost(e);
+  speakLetter(el.dataset.letter);                  // voice of the letter
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+}
+function moveGhost(e) {
+  drag.ghost.style.left = e.clientX - drag.w / 2 + "px";
+  drag.ghost.style.top = e.clientY - drag.h / 2 + "px";
+}
+function onMove(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  e.preventDefault();
+  moveGhost(e);
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const box = t && t.closest ? t.closest(".drop-box") : null;
+  if (drag.over && drag.over !== box) drag.over.classList.remove("over");
+  if (box) box.classList.add("over");
+  drag.over = box;
+}
+function onUp(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  window.removeEventListener("pointermove", onMove);
+  window.removeEventListener("pointerup", onUp);
+  window.removeEventListener("pointercancel", onUp);
+  const d = drag; drag = null;
+  d.ghost.remove();
+  d.el.classList.remove("dragging");
+  if (d.over) d.over.classList.remove("over");
+  if (e.type === "pointercancel") return;
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  if (!t) return;
+  const box = t.closest(".drop-box");
+  if (box) { handleDropOf(d.el, box); return; }
+  if (t.closest("#letterRow")) handleReturnToPool(d.el);
+}
 
-  // Remove letter from old box if already placed there
-  const oldBox = Array.from(document.querySelectorAll(".drop-box"))
-    .find(b => b.querySelector(".letter")?.dataset.letter === draggedLetter);
+/* ---------- Game logic ---------- */
+function updateAllCorrect() {
+  const boxes = Array.from(document.querySelectorAll(".drop-box"));
+  const allFilled = boxes.every(b => b.querySelector(".letter"));
+  const isAll = allFilled && correctFlags.every(f => f);
+  setVar("AllCorrect", isAll);
+  if (isAll && !locked) finishQuestion();
+}
 
-  if (oldBox && oldBox !== dropTarget) {
-    oldBox.innerHTML = "";
-    setBoxState(oldBox, "default");
-  }
-
-  // === Drop on drop box ===
-  if (dropTarget.classList.contains("drop-box")) {
-    if (dropTarget.querySelector(".letter")) return; // already filled
-
-    const letterData = selectedLetters.find(l => l === draggedLetter);
-    if (!letterData) return;
-
-    const idx = selectedLetters.indexOf(draggedLetter) + 1;
-    const dropNum = parseInt(dropTarget.dataset.drop);
-    const correctIndex = correctIndices[idx - 1];
-
-    // Create a *copy* of the top letter
-    const movedEl = createLetterElement(draggedLetter, idx);
-    dropTarget.appendChild(movedEl);
-
-    // check correctness
-    if (dropNum === correctIndex) {
-      setBoxState(dropTarget, "correct");
-      correctFlags[idx - 1] = true;
-      player?.SetVar("IsCorrect" + idx, true);
-    } else {
-      setBoxState(dropTarget, "incorrect");
-      correctFlags[idx - 1] = false;
-      player?.SetVar("IsCorrect" + idx, false);
-    }
-
-    player?.SetVar("R" + idx, draggedLetter);
-    updateAllCorrect();
+function handleDropOf(el, box) {
+  if (locked || !el) return;
+  if (el.parentElement === box) return;
+  if (box.querySelector(".letter")) {
+    box.classList.add("shake");
+    setTimeout(() => box.classList.remove("shake"), 300);
+    beep(200, 0.15, "square");
     return;
   }
+  const letter = el.dataset.letter;
+  const idx = parseInt(el.dataset.idx);
+  const oldBox = el.parentElement.classList.contains("drop-box") ? el.parentElement : null;
+  if (oldBox) setBoxState(oldBox, "default");
 
-  // === Drop back to letter row ===
-  if (dropTarget.id === "letterRow" && oldBox) {
-    const letter = oldBox.querySelector(".letter");
-    if (letter) {
-      const idx = parseInt(letter.dataset.idx);
-      correctFlags[idx - 1] = false;
-      oldBox.innerHTML = "";
-      setBoxState(oldBox, "default");
-      updateAllCorrect();
-    }
+  box.appendChild(el);
+  const dropNum = parseInt(box.dataset.drop);
+  const correctIndex = [...selectedLetters].sort().indexOf(letter) + 1;
+  const p = prog[level];
+
+  if (dropNum === correctIndex) {
+    setBoxState(box, "correct");
+    correctFlags[idx - 1] = true;
+    setVar("IsCorrect" + idx, true);
+    if (!rewarded[letter]) { rewarded[letter] = true; p.score += POINTS_CORRECT; }
+    say("😀 Great!", "#2e7d32");
+    beep(660, 0.12); setTimeout(() => beep(880, 0.15), 120);
+  } else {
+    setBoxState(box, "incorrect");
+    correctFlags[idx - 1] = false;
+    setVar("IsCorrect" + idx, false);
+    p.score = Math.max(0, p.score - PENALTY_WRONG);
+    say("🙁 Try again", "#c0392b");
+    beep(220, 0.25, "sawtooth");
+  }
+  setVar("R" + idx, letter);
+  updateHud();
+  updateAllCorrect();
+}
+
+function handleReturnToPool(el) {
+  if (locked || !el) return;
+  const oldBox = el.parentElement.classList.contains("drop-box") ? el.parentElement : null;
+  if (!oldBox) return;
+  const idx = parseInt(el.dataset.idx);
+  correctFlags[idx - 1] = false;
+  setVar("IsCorrect" + idx, false);
+  setBoxState(oldBox, "default");
+  letterRow.appendChild(el);
+  say("");
+  updateAllCorrect();
+}
+
+function celebrate() {
+  const icons = ["⭐", "🎈", "🎉", "🌟", "🎊"];
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement("div");
+    s.className = "pop";
+    s.textContent = icons[i % icons.length];
+    s.style.left = 8 + Math.random() * 84 + "vw";
+    s.style.top = 45 + Math.random() * 40 + "vh";
+    s.style.animationDelay = Math.random() * 0.3 + "s";
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1900);
   }
 }
 
-function generateQuestion() {
-  letterRow.innerHTML = "";
-  dropRow.innerHTML = "";
-
-  const allLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  allLetters.sort(() => Math.random() - 0.5);
-  selectedLetters = allLetters.slice(0, 4);
-
-  selectedLetters.forEach((letter, i) => {
-    const el = createLetterElement(letter, i + 1);
-    letterRow.appendChild(el);
-  });
-
-  for (let i = 1; i <= 4; i++) {
-    const box = createBox(i);
-    dropRow.appendChild(box);
-  }
-
-  const sorted = [...selectedLetters].sort();
-  correctIndices = selectedLetters.map(l => sorted.indexOf(l) + 1);
-  correctFlags = [false, false, false, false];
-  console.log("Generated letters:", selectedLetters, "Correct indices:", correctIndices);
+function finishQuestion() {
+  locked = true;
+  const p = prog[level];
+  const qElapsed = (Date.now() - qStart) / 1000;
+  const limit = TIME_BONUS_LIMIT[level];
+  p.score += Math.max(0, Math.round(TIME_BONUS_MAX * (1 - qElapsed / limit)));
+  p.q++;
+  updateHud();
+  say("🎉 Well done!", "#2e7d32");
+  celebrate();
+  beep(523, 0.12); setTimeout(() => beep(659, 0.12), 130); setTimeout(() => beep(784, 0.25), 260);
+  speak("Well done!", 1);
+  nextTimer = setTimeout(() => {
+    if (p.q >= QUESTIONS_PER_LEVEL) finishLevel(); else startQuestion();
+  }, 1500);
 }
 
-letterRow.addEventListener("dragover", allowDrop);
-letterRow.addEventListener("drop", handleDrop);
+function finishLevel() {
+  stopTimer();
+  const p = prog[level];
+  p.done = true;
+  updateHud();
+  const maxScore = QUESTIONS_PER_LEVEL * (LEVELS[level] * POINTS_CORRECT + TIME_BONUS_MAX);
+  const ratio = p.score / maxScore;
+  const stars = ratio >= 0.85 ? 3 : ratio >= 0.6 ? 2 : 1;
+  const allDone = prog.every(x => x.done);
+  ovStars.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+  ovText.innerHTML = "⏱ " + fmt(p.time) + " &nbsp; ⭐ " + p.score;
+  if (allDone) {
+    ovTitle.textContent = "🏆 You Did It!";
+    ovBtn.textContent = "Play Again ↻";
+    ovBtn.onclick = () => { overlay.classList.remove("show"); restartGame(); };
+    setVar("GameComplete", true);
+    speak("Congratulations! You finished all levels!", 0.95);
+  } else {
+    const next = prog.findIndex((x, i) => i > level && !x.done);
+    const target = next >= 0 ? next : prog.findIndex(x => !x.done);
+    ovTitle.textContent = "🎉 Level " + (level + 1) + " Done!";
+    ovBtn.textContent = "Next Level ▶";
+    ovBtn.onclick = () => { overlay.classList.remove("show"); switchLevel(target, true); };
+    speak("Great job! Level complete!", 0.95);
+  }
+  locked = true;
+  overlay.classList.add("show");
+}
 
-generateQuestion();
+function startQuestion() {
+  const count = LEVELS[level];
+  letterRow.innerHTML = ""; dropRow.innerHTML = "";
+  locked = false; rewarded = {}; say("");
+  setVar("AllCorrect", false);
 
+  const pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  pool.sort(() => Math.random() - 0.5);
+  selectedLetters = pool.slice(0, count);
+  selectedLetters.forEach((l, i) => letterRow.appendChild(createLetterElement(l, i + 1)));
+  for (let i = 1; i <= count; i++) dropRow.appendChild(createBox(i));
+  correctFlags = new Array(count).fill(false);
+  for (let i = 1; i <= count; i++) { setVar("IsCorrect" + i, false); setVar("R" + i, ""); }
+
+  qStart = Date.now();
+  updateHud();
+  fit();
+  if (prog[level].q === 0) setTimeout(() => speakInstruction(), 300);
+}
+
+/* Student can change level any time */
+function switchLevel(i, force) {
+  if (i === level && !force) return;
+  clearTimeout(nextTimer);
+  stopTimer();
+  overlay.classList.remove("show");
+  level = i;
+  if (prog[level].done) prog[level] = newProg();    // replay a finished level
+  startTimer();
+  startQuestion();
+}
+
+function restartLevel() {
+  clearTimeout(nextTimer);
+  stopTimer();
+  prog[level] = newProg();
+  startTimer();
+  startQuestion();
+}
+$("restartBtn").onclick = restartLevel;
+
+function restartGame() {
+  clearTimeout(nextTimer);
+  clearInterval(timerId);
+  resetAll();
+  level = 0;
+  setVar("GameComplete", false);
+  startTimer();
+  startQuestion();
+}
+
+/* Storyline can restart by setting RegenerateQuestion = true */
 setInterval(() => {
-  if (player && player.GetVar("RegenerateQuestion") === true) {
-    generateQuestion();
-    player.SetVar("RegenerateQuestion", false);
-  }
+  try {
+    if (player && player.GetVar("RegenerateQuestion") === true) {
+      restartGame();
+      player.SetVar("RegenerateQuestion", false);
+    }
+  } catch (e) {}
 }, 200);
+
+restartGame();
+
+/* Browsers block automatic voice until the first tap.
+   If the voice could not start by itself, show a big Start button: one tap, then the instruction plays automatically. */
+function showStart() {
+  locked = true;
+  ovTitle.textContent = "🔊 Let's Play!";
+  ovStars.textContent = "🔤";
+  ovText.textContent = "Tap Start";
+  ovBtn.textContent = "▶ Start";
+  ovBtn.onclick = () => {
+    overlay.classList.remove("show");
+    locked = false;
+    prog[level].time = 0; sessStart = Date.now(); qStart = Date.now();
+    speakInstruction(true);
+  };
+  overlay.classList.add("show");
+}
+setTimeout(() => { if (!introDone) showStart(); }, 900);
 </script>
 </body>
 </html>
